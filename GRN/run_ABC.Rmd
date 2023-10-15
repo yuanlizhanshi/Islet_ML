@@ -1,0 +1,290 @@
+---
+title: "Calculate ABC socre"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Prepare nesseary data
+
+```{r}
+library(ArchR)
+library(tidyverse)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(GenomicRanges)
+library(rtracklayer)
+addArchRThreads(threads = 20) 
+addArchRGenome("hg38")
+all_Peak <- list.files('signac_macs2_temp',pattern = 'bed',full.names = T)
+all_peak_name <- stringr::str_extract(all_Peak,'(?<=p/)\\w+(?=_)')
+all_Peak_gr <- indentifyReproduciblePeaks(summitFiles = all_Peak,summitNames = all_peak_name,reproducibility = 0)
+all_Peak_gr$peak_name <- paste0('peak',1:length(all_Peak_gr))
+beta_peaks <- all_peaks_overlap %>% filter(Beta == 1)
+beta_peaks_gr <- all_Peak_gr[all_Peak_gr$peak_name %in% beta_peaks$peak]
+beta_candidate_promoter <- subsetByOverlaps(
+    beta_peaks_gr,
+    ChIPseeker::getPromoters(
+        TxDb.Hsapiens.UCSC.hg38.knownGene,
+        upstream = 2000,
+        downstream = 500,
+        by = 'transcript'
+    )
+)
+rtracklayer::export.bed(beta_candidate_promoter,'/data/kyh/islet_abc/reference/hg38_beta_promoter_2000_500.bed')
+alpha_peaks <- all_peaks_overlap %>% filter(Alpha == 1)
+alpha_peaks_gr <- all_Peak_gr[all_Peak_gr$peak_name %in% alpha_peaks$peak]
+alpha_candidate_promoter <- subsetByOverlaps(
+    alpha_peaks_gr,
+    ChIPseeker::getPromoters(
+        TxDb.Hsapiens.UCSC.hg38.knownGene,
+        upstream = 2000,
+        downstream = 500,
+        by = 'transcript'
+    )
+)
+rtracklayer::export.bed(alpha_candidate_promoter,'/data/kyh/islet_bam/reference/hg38_alpha_promoter_2000_500.bed')
+
+rtracklayer::export.bed(ArchR::getBlacklist(),con = '/data/kyh/islet_bam/reference/hg38_blacklist.bed')
+
+gtf <- rtracklayer::import.gff('~/Desktop/hg38/hg38_transcript/genes.gtf',format = "gtf") %>% as.data.frame() %>% filter(type == 'transcript')
+
+
+hg38_genes <- tibble(
+    seqnames = gtf$seqnames,
+    start = gtf$start,
+    end = gtf$end,
+    symbol = gtf$transcript_name,
+    frame = rep(0,length(gtf$seqnames)),
+    strand = gtf$strand
+)
+
+data.table::fwrite(hg38_genes,file = '/data/kyh/islet_abc/reference/hg38_gene.bed',sep = '\t',col.names = F)
+
+##Prepare exp table
+
+beta_tpm <- fread('/data/kyh/islet_abc/expression/multiome_beta_pseudobulk_tpm.txt')
+
+hg38_genes2 <- tibble(
+    seqnames = gtf$seqnames,
+    start = gtf$start,
+    end = gtf$end,
+    transcript_name = gtf$transcript_name,
+    frame = rep(0,length(gtf$seqnames)),
+    strand = gtf$strand,
+    symbol = gtf$gene_name
+) %>% left_join(beta_tpm,by = c('symbol' = 'V1')) %>% dplyr::select(transcript_name,V2)
+
+fwrite(hg38_genes2,file = '/data/kyh/islet_abc/expression/multiome_beta_pseudobulk_tpm.txt',sep = '\t',col.names = F)
+hg38_genes3 <- hg38_genes2 %>% filter(V2 >= 1)
+fwrite(hg38_genes3[,1],file = '/data/kyh/islet_abc/expression/multiome_beta_UbiquitouslyExpressedGenes.txt',sep = '\t',col.names = F)
+
+```
+
+# Split bams
+```{r}
+library(ArchR)
+library(tidyverse)
+addArchRGenome("hg38")
+Alpha_beta <- loadArchRProject('~/Desktop/islet_biobank_multiome_downsteam/scATAC-seq/Alpha_beta/')
+metadata_info <- getCellColData(Alpha_beta)
+metadata_info$barcode <- rownames(metadata_info)
+metadata_info <- as.data.frame(metadata_info)
+metadata_info <- metadata_info %>% dplyr::select(barcode,cell_type)
+metadata_info$barcode2 <- str_extract(metadata_info$barcode,'(?<=#)\\w+')
+metadata_info$sample <- str_extract(metadata_info$barcode,'.*(?=#)')
+metadata_info <- metadata_info %>% dplyr::select(barcode2,cell_type,sample)
+metadata_info_list <- metadata_info %>% group_split(sample)
+
+for (i in 1:length(metadata_info_list)) {
+   df <-  metadata_info_list[[i]]
+   colnames(df) <- c('Index', 'Cell_type','sample') 
+   names <- unique(df$sample)
+   data.table::fwrite(df[,1:2],paste0('/data/kyh/islet_bam/metadata/',names,'.tsv'),sep = '\t')
+   cat(names,'finished\n')
+}
+
+
+for (i in unique(metadata_info$sample)) {
+    bam_file = paste0('/data/kyh/biobank_ATAC_sra/',i,'/outs/possorted_bam.bam')
+    if (file.exists(bam_file)) {
+        file.copy(bam_file,paste0('/data/kyh/islet_bam/raw_bam/',i,'.bam'))
+    }else{
+        bam_file = paste0('/data/gaowei/biobank_fastq_multiome/biobank_multiome_out/',i,'/outs/atac_possorted_bam.bam')   
+        if (file.exists(bam_file)) {
+            file.copy(bam_file,paste0('/data/kyh/islet_bam/raw_bam/',i,'.bam'))
+        }else{
+            stop('error')
+        }
+    }
+    cat(i,'finished\n')
+}
+
+# python SplitBamCellTypes.py --bam SAMP-1097.chr1.bam\
+#         --meta metadata/SAMP-1097.tsv --id SAMP-1097_chr1 \
+#         --n_trim 5  \
+#         --min_MQ 30 \
+#         --outdir SAMP-1097
+```
+
+```{bash}
+snakemake -s batch_split_bam.smk -c 34
+```
+
+# merge bam from the same cell type
+
+```{bash}
+samtools merge -@ 40 -o ../alpha_bam/alpha_merged.bam *.Alpha.bam
+samtools index ../alpha_bam/alpha_merged.bam
+bamCoverage -bs 60 -b alpha_merged.bam -o alpha_merged.bigwig --normalizeUsing CPM
+samtools merge -@ 40 -o ../beta_bam/beta_merged.bam *.Beta.bam
+samtools index ../beta_bam/beta_merged.bam
+bamCoverage -bs 60 -b beta_merged.bam -o beta_merged.bigwig --normalizeUsing CPM
+
+
+#Merge beta bam by ND and T2D----
+
+samtools merge -@ 5 -o ../beta_ND_T2D_bam/beta_ND.bam \
+SAMP-692.Beta.bam SAMP-1695.Beta.bam SAMP-1696.Beta.bam SAMP-1697.Beta.bam SAMP-1136.Beta.bam \
+SAMP-1134.Beta.bam SAMP-1137.Beta.bam SAMP-1602.Beta.bam SAMP-1501.Beta.bam SAMP-1612.Beta.bam \
+SAMP-1606.Beta.bam
+samtools index beta_ND.bam
+bamCoverage -p 70 -bs 1 -b beta_ND.bam --minMappingQuality 30 --ignoreDuplicates -o beta_ND.bigwig --normalizeUsing CPM
+
+samtools merge -@ 5 -o ../beta_ND_T2D_bam/beta_T2D.bam \
+SAMP-689.Beta.bam SAMP-1608.Beta.bam SAMP-1097.Beta.bam SAMP-1611.Beta.bam SAMP-1607.Beta.bam \
+SAMP-1605.Beta.bam SAMP-1150.Beta.bam SAMP-1144.Beta.bam SAMP-1149.Beta.bam SAMP-1145.Beta.bam \
+SAMP-1148.Beta.bam SAMP-1151.Beta.bam SAMP-1499.Beta.bam SAMP-1610.Beta.bam SAMP-1503.Beta.bam 
+samtools index beta_T2D.bam
+bamCoverage -p 70 -bs 1 -b beta_T2D.bam --minMappingQuality 30 --ignoreDuplicates -o beta_T2D.bigwig --normalizeUsing CPM
+```
+
+
+# sort peaks
+```{bash}
+bedtools sort -faidx hg38.fai -i Beta_peaks.narrowPeak > Beta_peaks_sort.narrowPeak
+bedtools sort -faidx hg38.fai -i Alpha_peaks.narrowPeak > Alpha_peaks_sort.narrowPeak
+```
+
+# Run ABC model
+## Prepre hic file
+```{bash}
+#beta
+python ABC-Enhancer-Gene-Prediction-master/src/juicebox_dump.py \
+--hic_file /data/kyh/islet_regulatome/HiC/hic/SRR16827076.hic \
+--juicebox 'java -jar /data/kyh/islet_regulatome/HiC/script/juicer_tools_1.22.01.jar' \
+--outdir beta_hiC/raw 
+
+python ABC-Enhancer-Gene-Prediction-master/src/compute_powerlaw_fit_from_hic.py \
+--hicDir beta_hiC/raw \
+--outDir beta_hiC/raw/powerlaw/ \
+--maxWindow 1500000 \
+--minWindow 5000 \
+--resolution 5000 
+
+#alpha
+python ABC-Enhancer-Gene-Prediction-master/src/juicebox_dump.py \
+--hic_file /data/kyh/islet_regulatome/HiC/hic/SRR16827075.hic \
+--juicebox 'java -jar /data/kyh/islet_regulatome/HiC/script/juicer_tools_1.22.01.jar' \
+--outdir alpha_hiC/raw 
+
+python ABC-Enhancer-Gene-Prediction-master/src/compute_powerlaw_fit_from_hic.py \
+--hicDir alpha_hiC/raw \
+--outDir alpha_hiC/raw/powerlaw/ \
+--maxWindow 1500000 \
+--minWindow 5000 \
+--resolution 5000 
+```
+
+
+
+
+## Step 1. Define candidate elemets
+```{bash}
+python ABC-Enhancer-Gene-Prediction-master/src/makeCandidateRegions.py \
+--narrowPeak peaks/Beta_peaks_sort.narrowPeak \
+--bam final_bam/beta_merged.bam \
+--outDir abc_out/beta_ABC_out/ \
+--chrom_sizes reference/hg38 \
+--regions_blocklist reference/hg38_blacklist.bed \
+--regions_includelist reference/hg38_beta_promoter_2000_500.bed \
+--peakExtendFromSummit 250 \
+--nStrongestPeaks 175000 
+
+python ABC-Enhancer-Gene-Prediction-master/src/makeCandidateRegions.py \
+--narrowPeak peaks/Alpha_peaks_sort.narrowPeak \
+--bam final_bam/alpha_merged.bam \
+--outDir abc_out/alpha_ABC_out/ \
+--chrom_sizes reference/hg38 \
+--regions_blocklist reference/hg38_blacklist.bed \
+--regions_includelist reference/hg38_alpha_promoter_2000_500.bed \
+--peakExtendFromSummit 250 \
+--nStrongestPeaks 175000 
+```
+
+
+## Step 2. Quantifying Enhancer Activity
+```{bash}
+python ABC-Enhancer-Gene-Prediction-master/src/run.neighborhoods.py \
+--candidate_enhancer_regions abc_out/beta_ABC_out/Beta_peaks_sort.narrowPeak.candidateRegions.bed \
+--genes reference/hg38_gene.bed \
+--H3K27ac final_bam/islet_H3K27ac.bam \
+--ATAC final_bam/beta_merged.bam \
+--expression_table expression/multiome_beta_pseudobulk_tpm.txt \
+--chrom_sizes reference/hg38 \
+--ubiquitously_expressed_genes expression/multiome_beta_UbiquitouslyExpressedGenes.txt \
+--cellType beta \
+--use_secondary_counting_method \
+--outdir abc_out/beta_ABC_out/
+
+python ABC-Enhancer-Gene-Prediction-master/src/run.neighborhoods.py \
+--candidate_enhancer_regions abc_out/alpha_ABC_out/Alpha_peaks_sort.narrowPeak.candidateRegions.bed \
+--genes reference/hg38_gene.bed \
+--H3K27ac final_bam/islet_H3K27ac.bam \
+--ATAC final_bam/alpha_merged.bam \
+--expression_table expression/multiome_alpha_pseudobulk_tpm.txt \
+--chrom_sizes reference/hg38 \
+--ubiquitously_expressed_genes expression/multiome_alpha_UbiquitouslyExpressedGenes.txt \
+--cellType alpha \
+--outdir abc_out/alpha_ABC_out/
+
+
+```
+
+## Step 3. Computing the ABC Score
+```{bash}
+python ABC-Enhancer-Gene-Prediction-master/src/predict.py \
+--enhancers abc_out/beta_ABC_out/EnhancerList2.bed \
+--genes abc_out/beta_ABC_out/GeneList.txt \
+--chrom_sizes reference/hg38 \
+--threshold 0.015 \
+--cellType beta \
+--outdir abc_out/beta_ABC_out/ \
+--HiCdir beta_hiC/raw \
+--hic_type juicebox \
+--hic_resolution 5000 \
+--window 1000000 \
+--hic_pseudocount_distance 1500000 \
+--scale_hic_using_powerlaw \
+--make_all_putative
+
+
+python ABC-Enhancer-Gene-Prediction-master/src/predict.py \
+--enhancers abc_out/alpha_ABC_out/EnhancerList.txt \
+--genes abc_out/alpha_ABC_out/GeneList.txt \
+--chrom_sizes reference/hg38 \
+--threshold 0.015 \
+--cellType alpha \
+--outdir abc_out/alpha_ABC_out/ \
+--HiCdir alpha_hiC/raw \
+--hic_type juicebox \
+--hic_resolution 5000 \
+--window 1500000 \
+--hic_pseudocount_distance 1500000 \
+--scale_hic_using_powerlaw \
+--make_all_putative 
+```
+
+
+
