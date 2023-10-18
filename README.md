@@ -33,7 +33,7 @@ First, split the scATAC bam file based on the cell type information. Then genera
 
 After prepare the all data, using code in run_ABC.Rmd to generate enhancer promoter interactions with [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction)
 
-Then using the (motifmachr)[https://github.com/GreenleafLab/motifmatchr] to assign the TF to the corresponding cis-regulatory element
+Then using the [motifmachr](https://github.com/GreenleafLab/motifmatchr) to assign the TF to the corresponding cis-regulatory element
 
 
 # Using XGboost to remove donors with low predicted accuracy rates
