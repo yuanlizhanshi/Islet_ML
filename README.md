@@ -33,6 +33,9 @@ First, split the scATAC bam file based on the cell type information. Then genera
 
 After prepare the all data, using code in run_ABC.Rmd to generate enhancer promoter interactions with [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction)
 
-Then using the (motifmachr)[https://github.com/GreenleafLab/motifmatchr] to assign the TF to the corresponding cis-regulatory element.
+Then using the (motifmachr)[https://github.com/GreenleafLab/motifmatchr] to assign the TF to the corresponding cis-regulatory element
 
 
+# Using XGboost to remove donors with low predicted accuracy rates
+
+Due to the heterogeneity of human data, we found some of the donors with the discrepancy gene expression profile, which exhibit the extremely low predicted accuracy rates (15%). We decided run iterative XGboost to remove these donors until no donor with low predicted accuracy, then calculate the differently expressed genes.
