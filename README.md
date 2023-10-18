@@ -20,4 +20,16 @@ Processed beta cell scATAC-seq data is stored in [cowtransfer](https://drctdb.co
 *.R, r code for downstream analysis of scATAC-seq, including quality control, clustering, cell annotation and peak calling
 
 
+# Preprocess ChIP-seq data and HiC data
+
+For ChIP-seq data, we only run the basic upstream analysis, such quality control and mapping. The bam file of H3H27ac modification will used for ABC model input.
+
+For HiC data, we could run the basic upstream analysis, such quality control, mapping (This workflow is reference from [Renlab](https://github.com/ren-lab/hic-pipeline) ). The hic file will used for ABC model input.
+
+
+# Infer basic GRN form single cell multiomics data
+
+First, split the scATAC bam file based on the cell type information. Then generate the gene expression (TPM) from multiome dataset from [Wang et al. 2023](https://www.nature.com/articles/s41588-023-01397-9)
+
+After prepare the all data, using code in run_ABC.Rmd to generate enhancer promoter interactions with [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction)
 
