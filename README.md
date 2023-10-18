@@ -27,9 +27,12 @@ For ChIP-seq data, we only run the basic upstream analysis, such quality control
 For HiC data, we could run the basic upstream analysis, such quality control, mapping (This workflow is reference from [Renlab](https://github.com/ren-lab/hic-pipeline) ). The hic file will used for ABC model input.
 
 
-# Infer basic GRN form single cell multiomics data
+# Infer and refine GRN form single cell multiomics data
 
 First, split the scATAC bam file based on the cell type information. Then generate the gene expression (TPM) from multiome dataset from [Wang et al. 2023](https://www.nature.com/articles/s41588-023-01397-9)
 
 After prepare the all data, using code in run_ABC.Rmd to generate enhancer promoter interactions with [ABC model](https://github.com/broadinstitute/ABC-Enhancer-Gene-Prediction)
+
+Then using the (motifmachr)[https://github.com/GreenleafLab/motifmatchr] to assign the TF to the corresponding cis-regulatory element.
+
 
