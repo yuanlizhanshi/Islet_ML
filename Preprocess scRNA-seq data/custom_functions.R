@@ -100,3 +100,49 @@ run_seurat <- function(sce,cluster = FALSE, resolution = 0.3){
   return(sce)
 }
 
+peak_anno <- function(reference_GRange, tssRegion = c(-2000, 500),filter = FALSE) {
+    library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+    txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+    library(org.Hs.eg.db)
+    annodb <- 'org.Hs.eg.db'
+    
+    peakAnno <- ChIPseeker::annotatePeak(reference_GRange,
+                                         tssRegion = tssRegion,
+                                         TxDb = txdb, annoDb = annodb,
+                                         verbose = T
+    )
+    region <- peakAnno@anno@elementMetadata$annotation
+    gene <- peakAnno@anno@elementMetadata$ENSEMBL
+    symbol <- peakAnno@anno@elementMetadata$SYMBOL
+    start1 <- peakAnno@anno@ranges@start
+    dis <- peakAnno@anno@elementMetadata$distanceToTSS
+    
+    exon1 <- grep('exon',region)
+    Intron1 <- grep('Intron',region)
+    Intergenic1 <- grep('Intergenic',region)
+    Downstream1 <- grep('Downstream',region)
+    Promoter1 <- grep('Promoter',region)
+    UTR3 <- grep("3' UTR",region)
+    UTR5 <- grep("5' UTR",region)
+    region2 <- rep(NA,length(region))
+    region2[exon1]='Exon'
+    region2[Intron1]='Intron'
+    region2[Downstream1]='Downstream'
+    region2[Promoter1]='Promoter'
+    region2[UTR3]="3' UTR"
+    region2[UTR5]="5' UTR"
+    region2[Intergenic1]='Intergenic'
+    table(region2)
+    peak_region1 <- paste(as.character(peakAnno@anno@seqnames),
+                          as.character(peakAnno@anno@ranges),sep = ':')
+    peak_gr=reference_GRange
+    peak_gr$gene = gene
+    peak_gr$symbol = symbol
+    peak_gr$region = region2
+    peak_gr$distanceToTSS = dis
+    ### filter peaks based on annotation
+    if (filter) {
+        peak_gr = peak_gr[peak_gr$region=='Promoter']  
+    }
+    return(peak_gr)
+}
