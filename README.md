@@ -22,9 +22,9 @@ Processed beta cell scATAC-seq data is stored in [cowtransfer](https://drctdb.co
 
 # Preprocess ChIP-seq data and HiC data
 
-For ChIP-seq data, we only run the basic upstream analysis, such quality control and mapping. The bam file of H3H27ac modification will used for ABC model input.
+For ChIP-seq data, we only run the basic upstream analysis, such quality control and mapping. The [bam file of H3H27ac](https://drctdb.cowtransfer.com/s/8590c30adce14e) modification will used for ABC model input.
 
-For HiC data, we could run the basic upstream analysis, such quality control, mapping (This workflow is reference from [Renlab](https://github.com/ren-lab/hic-pipeline) ). The hic file will used for ABC model input and available in [cowtransfer](https://drctdb.cowtransfer.com/s/f85edaafd12d46).
+For HiC data, we could run the basic upstream analysis, such quality control, mapping (This workflow is reference from [Renlab](https://github.com/ren-lab/hic-pipeline) ). The [hic file](https://drctdb.cowtransfer.com/s/f85edaafd12d46) will used for ABC model input.
 
 
 # Infer and refine GRN form single cell multiomics data
