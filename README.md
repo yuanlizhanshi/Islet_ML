@@ -10,7 +10,7 @@ After ML quality controlled, beta cell scRNA-seq dataset is stored in [cowtransf
 
 *.R, r code for downstream analysis of scRNA-seq, including quality control,clustering, cell annotation, 
 
-# Pre-train altlas
+# Pre-trained human islets atlas
 
 The well-annotated scRNA-seq datsets was trained by scVI and scANVI to learn cell representation.
 
