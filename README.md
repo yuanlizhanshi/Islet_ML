@@ -10,6 +10,12 @@ After ML quality controlled, beta cell scRNA-seq dataset is stored in [cowtransf
 
 *.R, r code for downstream analysis of scRNA-seq, including quality control,clustering, cell annotation, 
 
+# Pre-train altlas
+
+The well-annotated scRNA-seq datsets was trained by scVI and scANVI to learn cell representation.
+
+The trained h5ad file is stored in [cowtransfer](https://drctdb.cowtransfer.com/s/9adb968646324d)
+
 # Preprocess scATAC-seq data
 
 This folder contains the code and data used for the scATAC-seq analysis (multiome + scATAC-seq).
