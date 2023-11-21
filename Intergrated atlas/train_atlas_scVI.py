@@ -20,7 +20,7 @@ torch.set_float32_matmul_precision("high")
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 def usage():
-    print('Usage: python script.py [input_h5ad] [output_h5ad]')
+    print('Usage: python script.py [input_h5ad]')
 
 def train_scvi_reference(adata = None):
     if adata is None:
