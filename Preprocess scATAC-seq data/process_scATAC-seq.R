@@ -129,7 +129,8 @@ subdivideGRanges <- function (x, subsize = 500,core = NULL)
                 fold <- 1
             }
             resize(x[i],width = 500 * fold ,fix = 'center')   
-        },.progress = T) %>% purrr::reduce(c)
+        },.progress = T) 
+        x <- do.call(c,x)
     }else{
         require(furrr)
         plan(multisession,workers = core)
@@ -140,7 +141,8 @@ subdivideGRanges <- function (x, subsize = 500,core = NULL)
                 fold <- 1
             }
             resize(x[i],width = 500 * fold ,fix = 'center')   
-        },.progress = T) %>% purrr::reduce(c)
+        },.progress = T) 
+        x <- do.call(c,x)
     } 
     x <- sort(GenomicRanges::reduce(x))
     gr_list <- lapply(levels(seqnames(x)), function(seqlvl) {
@@ -153,6 +155,7 @@ subdivideGRanges <- function (x, subsize = 500,core = NULL)
     do.call(c, gr_list) 
     
 }
+
 
 
 ##Scan fragment------
