@@ -1,4 +1,6 @@
-This the reproducible code for the islet paper.
+This the reproducible code for the islet paper. 
+
+All data can be download in [Zenodo](https://zenodo.org/records/15051057).
 
 # Preprocess scRNAseq data
 
