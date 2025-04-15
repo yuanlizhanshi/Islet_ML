@@ -47,3 +47,10 @@ Then using the [motifmachr](https://github.com/GreenleafLab/motifmatchr) to assi
 # Using XGboost to remove donors with low predicted accuracy rates
 
 Due to the heterogeneity of human data, we found some of the donors with the discrepancy gene expression profile, which exhibit the extremely low predicted accuracy rates (15%). We decided run iterative XGboost to remove these donors until no donor with low predicted accuracy rates, then calculate the differently expressed genes.
+
+
+# Citation
+
+Hu R, Ma Q, Kong Y, et al. A Compound Screen Based on Isogenic hESC‐Derived β Cell Reveals an Inhibitor Targeting ZnT8‐Mediated Zinc Transportation to Protect Pancreatic β Cell from Stress‐Induced Cell Death[J]. Advanced Science, 2413161.
+
+DOI: https://advanced.onlinelibrary.wiley.com/doi/full/10.1002/advs.202413161
